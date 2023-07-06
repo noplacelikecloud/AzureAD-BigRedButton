@@ -10,7 +10,6 @@ import json
 import logging
 import argparse
 import requests
-import msal
 import azure.identity as azid
 import string, random
 
