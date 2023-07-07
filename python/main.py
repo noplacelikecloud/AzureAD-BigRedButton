@@ -120,7 +120,7 @@ def CreateNewGlassBreakAccess():
     
     # Create PDF file
     print("Creating PDF file")
-    success = ExportVaultPDF(ServPrinc, ".")
+    success = ExportVaultPDF(ServPrinc, path)
 
     if not success:
         print("Creating PDF file failed")
@@ -277,17 +277,23 @@ def RemoveGlassBreakAccess():
     # Ask if credentials file is available. If not, all SP with name "azure-ad-glass-break" will be deleted
     while True:
         print("Do you have the credentials file? [y/n]")
-        choice = input("Please enter your choice: ")
+        choice_file = input("Please enter your choice: ")
 
-        if choice == "y":
+        if choice_file == "y":
             # Get path for credentials file
             while True:
                 print("Please provide the path for the credentials file")
-                path = input("Please enter the path: ")
+                path = input("Please enter the path of file: [Default: ./credentials.json] ")
 
-                # Check if path exists
-                if not os.path.exists(path):
-                    print("Path does not exist")
+                if path == "":
+                    path = "./credentials.json"
+
+                # Check if file exists - try opening it
+                try:
+                    f = open(path, "r")
+                    f.close()
+                except:
+                    print("File does not exist or you do not have permissions to open it")
                     continue
 
                 # make sure there is no / at end of string
@@ -297,7 +303,7 @@ def RemoveGlassBreakAccess():
                 break
             break
 
-        elif choice == "n":
+        elif choice_file == "n":
             path = None
             print("All service principals with name 'azure-ad-glass-break' will be deleted. Is this ok? [y/n]")
             while True:
@@ -339,6 +345,11 @@ def RemoveGlassBreakAccess():
         if not success_sp or not sucess_app:
             print("Deleting service principal failed")
             sys.exit(1)
+
+        # Delete credentials file
+        if os.path.exists(path):
+            print("Deleting credentials file")
+            os.remove(path)
         
         print("Service principal successfully deleted")
     
@@ -371,10 +382,6 @@ def RemoveGlassBreakAccess():
                 print("Deleting service principal failed")
                 sys.exit(1)
         
-        # Delete credentials file
-        print("Deleting credentials file")
-        os.remove("./credentials.json")
-        
         print("All service principals successfully deleted")
 
 def RollbackEmergencyAccess(isAutomated:bool = False, autoPath:str = None):
@@ -400,6 +407,11 @@ def RollbackEmergencyAccess(isAutomated:bool = False, autoPath:str = None):
             path = path[:-1]
     else:
         path = autoPath
+    
+    # Check if state file exists
+    if not os.path.exists("./.state.json"):
+        raise Exception("State file does not exist. Rollback is not possible")
+        sys.exit(1)
     
     # Read credentials from JSON file
     print("Reading credentials from JSON file")
@@ -440,7 +452,7 @@ def RollbackEmergencyAccess(isAutomated:bool = False, autoPath:str = None):
         print("No emergency user to delete")
 
     # Delete state file
-    os.remove("./state.json")
+    os.remove("./.state.json")
 
     print("Rollback successfully completed")
 

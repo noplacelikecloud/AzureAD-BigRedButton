@@ -171,38 +171,43 @@ def AssignPermissions(id:str, token:str):
     if response_assign.status_code == 204:
         print("Global Admin role assigned")
         # Add API permission
-        print("Add API permission")
-        url = f'https://graph.microsoft.com/v1.0/servicePrincipals/{id}/appRoleAssignments'
-        body = {
-        "principalId": id,
-        "resourceId": "5e446bad-f814-4c29-918e-b7de3c56fa71", # Id of Microsoft Graph Application
-        "appRoleId": "01c0a623-fc9b-48e9-b794-0756f8e8f067" # Id of Policy.ReadWrite.ConditionalAccess
-        }
-        response_permission = REST_API(url, token, body, "POST")
+        # Find Microsoft Graph Application and get resourceId
+        print("Find Microsoft Graph Application and get resourceId")
+        response_app = REST_API("https://graph.microsoft.com/v1.0/servicePrincipals?$filter=displayName eq 'Microsoft Graph'", token, None, "GET")
+        if response_app.status_code == 200:
+            resource_id = response_app.json()['value'][0]['id']
+            print("Add API permission")
+            url = f'https://graph.microsoft.com/v1.0/servicePrincipals/{id}/appRoleAssignments'
+            body = {
+            "principalId": id,
+            "resourceId": resource_id, # Id of Microsoft Graph Application
+            "appRoleId": "01c0a623-fc9b-48e9-b794-0756f8e8f067" # Id of Policy.ReadWrite.ConditionalAccess
+            }
+            response_permission = REST_API(url, token, body, "POST")
 
-        if response_permission.status_code == 201:
-            print("API permission added")
-            return True
-        else:
-            print("Error adding API permission")
-            print(response_permission.text)
+            if response_permission.status_code == 201:
+                print("API permission added")
+                return True
+            else:
+                print("Error adding API permission")
+                print(response_permission.text)
+                return False
+        elif response_assign.status_code == 401:
+            print("Unauthorized. Check if your account is a Global Admin")
             return False
-    elif response_assign.status_code == 401:
-        print("Unauthorized. Check if your account is a Global Admin")
-        return False
-    elif response_assign.status_code == 403:
-        print("Forbidden")
-        return False
-    elif response_assign.status_code == 404:
-        print("Not found")
-        return False
-    elif response_assign.status_code == 500:
-        print("Internal server error")
-        return False
-    else:
-        print("Unknown error")
-        return False
-    
+        elif response_assign.status_code == 403:
+            print("Forbidden")
+            return False
+        elif response_assign.status_code == 404:
+            print("Not found")
+            return False
+        elif response_assign.status_code == 500:
+            print("Internal server error")
+            return False
+        else:
+            print("Unknown error")
+            return False
+        
 def ExportCredentials(sp:ServicePrincipal, token: str, path:str = ".") -> bool:
     # create JSON file with tenantId, clientId and clientSecret
     sp.tenantId = GetTenantId(token)
@@ -359,8 +364,8 @@ def ToggleConditionalAccess(operation: str,token:str) -> (bool,[str]):
             return False, None
     
     elif operation == "enable":
-        # Get list of previous active policies from state.json
-        with open('state.json', "r") as infile:
+        # Get list of previous active policies from .state.json
+        with open('.state.json', "r") as infile:
             jsonstr = infile.read().encode('utf-8')
             data = json.loads(jsonstr)
 
@@ -471,9 +476,9 @@ def DeleteAppRegistration(spObj:ServicePrincipal, token:str) -> bool:
 
 def WriteStateFile(user = None, policyIds = None, EmergencyAccessActive = None) -> bool:
     # Check if state file is present
-    if os.path.isfile('state.json'):
+    if os.path.isfile('.state.json'):
         # Read state file
-        with open('state.json', "r") as infile:
+        with open('.state.json', "r") as infile:
             jsonstr = infile.read().encode('utf-8')
             data = json.loads(jsonstr)
 
@@ -487,7 +492,7 @@ def WriteStateFile(user = None, policyIds = None, EmergencyAccessActive = None) 
             
             # Write state file
             try:
-                with open('state.json', 'w') as outfile:
+                with open('.state.json', 'w') as outfile:
                     json.dump(data, outfile)
             except:
                 print("Error writing state file")
@@ -512,7 +517,7 @@ def WriteStateFile(user = None, policyIds = None, EmergencyAccessActive = None) 
             "policy_ids": policyIds
         }
         try:
-            with open('state.json', 'w') as outfile:
+            with open('.state.json', 'w') as outfile:
                 json.dump(state, outfile)
         except:
             print("Error creating state file")
@@ -521,8 +526,8 @@ def WriteStateFile(user = None, policyIds = None, EmergencyAccessActive = None) 
         return True
 
 def DeleteEmergencyUser(token:str):
-    # Get user id from state.json
-    with open('state.json', "r") as infile:
+    # Get user id from .state.json
+    with open('.state.json', "r") as infile:
         jsonstr = infile.read().encode('utf-8')
         data = json.loads(jsonstr)
 
@@ -646,10 +651,10 @@ def ExportVaultPDF(sp: ServicePrincipal, path: str) -> bool:
         template_loader = jinja2.FileSystemLoader(searchpath="./")
         template_env = jinja2.Environment(loader=template_loader)
 
-        template = template_env.get_template("templates/pdf_template.html")
+        template = template_env.get_template("python/templates/pdf_template.html")
         outputText = template.render(context)
 
-        path = path + "BreakGlassInformation.pdf"
+        path = path + "/" + "BreakGlassInformation.pdf"
 
         pdfkit.from_string(outputText, path, options={"enable-local-file-access": ""})
 

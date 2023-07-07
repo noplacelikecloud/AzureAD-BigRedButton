@@ -21,5 +21,4 @@ fi
 
 # Run the Python script
 echo "Running main.py..."
-cd python
-python3 main.py
+python3 python/main.py
