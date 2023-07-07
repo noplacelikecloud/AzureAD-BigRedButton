@@ -1,6 +1,6 @@
-# Glass Break Access - Code Project
+# Azure AD - Big Red Button
 
-This code project provides a CLI application for managing glass break access to Azure AD in case of emergencies. It allows you to set up a new glass break access, provide emergency access, disable conditional access, and perform other administrative and recovery tasks.
+This code project provides a CLI application for managing glass break access to Azure AD in case of emergencies using a Service Principal. It allows you to set up a new glass break access, provide emergency access, disable conditional access, and perform other administrative and recovery tasks.
 
 ## Installation
 
