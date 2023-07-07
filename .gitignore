@@ -1,1 +1,7 @@
 __pycache__/
+.vscode/
+.pytest_cache/
+
+BreakGlassInformation.pdf
+credentials.json
+qr.png
