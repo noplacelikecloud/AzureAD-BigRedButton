@@ -35,18 +35,19 @@ def StartMenu():
     print("1. Set up a new glass break access")
     print("2. Delete glass break access")
     print("3. Validate credentials")
-    print("4. Renew secret key \n")
+    print("4. Renew secret key")
+    print("5. Generate Vault PDF \n")
 
     print("###############################################")
     print("########## EMERGENCY TASKS ####################")
     print("############################################### \n")
-    print("5. Provide emergency access")
-    print("6. Disable Conditional Access\n")
+    print("6. Provide emergency access")
+    print("7. Disable Conditional Access\n")
 
     print("###############################################")
     print("########## RECOVERY TASKS #####################")
     print("############################################### \n")
-    print("7. Rollback emergency access/conditional access\n")
+    print("8. Rollback emergency access/conditional access\n")
 
     print("9. Exit \n")
     choice = input("Please enter your choice: ")
@@ -102,8 +103,13 @@ def CreateNewGlassBreakAccess():
         print("Exporting credentials failed")
         sys.exit(1)
     
+    print("Waiting for secret to be available - 30 seconds")
     #Sleep to make sure that secret is available
-    time.sleep(10)
+    i = 0
+    while i < 30:
+        print(".", end="", flush=True)
+        time.sleep(1)
+        i += 1
 
     # Test credentials
     if ServPrinc.test():
@@ -112,7 +118,20 @@ def CreateNewGlassBreakAccess():
         print("Credentials are invalid. Check your credentials file")
         sys.exit(1)
     
-    print("Glass break access successfully created")
+    # Create PDF file
+    print("Creating PDF file")
+    success = ExportVaultPDF(ServPrinc, path)
+
+    if not success:
+        print("Creating PDF file failed")
+        sys.exit(1)
+    
+    print("PDF file created successfully")
+    
+    print("Glass break access successfully created!")
+    print("Please store the credentials file + pdf on a safe place!")
+    print("Your credentials are vaild until " + ServPrinc.secretValidUntil)
+    print("Please make sure to renew your credentials before they expire. For this, you can use the renew secret key function")
 
 def ProvideEmergencyAccess():
     # Provide path of the credentials file
@@ -258,17 +277,23 @@ def RemoveGlassBreakAccess():
     # Ask if credentials file is available. If not, all SP with name "azure-ad-glass-break" will be deleted
     while True:
         print("Do you have the credentials file? [y/n]")
-        choice = input("Please enter your choice: ")
+        choice_file = input("Please enter your choice: ")
 
-        if choice == "y":
+        if choice_file == "y":
             # Get path for credentials file
             while True:
                 print("Please provide the path for the credentials file")
-                path = input("Please enter the path: ")
+                path = input("Please enter the path of file: [Default: ./credentials.json] ")
 
-                # Check if path exists
-                if not os.path.exists(path):
-                    print("Path does not exist")
+                if path == "":
+                    path = "./credentials.json"
+
+                # Check if file exists - try opening it
+                try:
+                    f = open(path, "r")
+                    f.close()
+                except:
+                    print("File does not exist or you do not have permissions to open it")
                     continue
 
                 # make sure there is no / at end of string
@@ -278,7 +303,7 @@ def RemoveGlassBreakAccess():
                 break
             break
 
-        elif choice == "n":
+        elif choice_file == "n":
             path = None
             print("All service principals with name 'azure-ad-glass-break' will be deleted. Is this ok? [y/n]")
             while True:
@@ -320,6 +345,11 @@ def RemoveGlassBreakAccess():
         if not success_sp or not sucess_app:
             print("Deleting service principal failed")
             sys.exit(1)
+
+        # Delete credentials file
+        if os.path.exists(path):
+            print("Deleting credentials file")
+            os.remove(path)
         
         print("Service principal successfully deleted")
     
@@ -352,10 +382,6 @@ def RemoveGlassBreakAccess():
                 print("Deleting service principal failed")
                 sys.exit(1)
         
-        # Delete credentials file
-        print("Deleting credentials file")
-        os.remove("./credentials.json")
-        
         print("All service principals successfully deleted")
 
 def RollbackEmergencyAccess(isAutomated:bool = False, autoPath:str = None):
@@ -381,6 +407,11 @@ def RollbackEmergencyAccess(isAutomated:bool = False, autoPath:str = None):
             path = path[:-1]
     else:
         path = autoPath
+    
+    # Check if state file exists
+    if not os.path.exists("./.state.json"):
+        raise Exception("State file does not exist. Rollback is not possible")
+        sys.exit(1)
     
     # Read credentials from JSON file
     print("Reading credentials from JSON file")
@@ -421,7 +452,7 @@ def RollbackEmergencyAccess(isAutomated:bool = False, autoPath:str = None):
         print("No emergency user to delete")
 
     # Delete state file
-    os.remove("./state.json")
+    os.remove("./.state.json")
 
     print("Rollback successfully completed")
 
@@ -554,16 +585,95 @@ def RenewSPSecret(isAutomated: bool = False, autoPath:str = None) -> None:
 
     # Renew SP secret
     print("Renewing SP secret")
-    success, secretIdNew, secretKeyNew = RenewSecret(token, credentials)
-
-    # Update credentials file
-    print("Updating credentials file")
-    credentials.clientSecret = secretKeyNew
-    credentials.secretId = secretIdNew
+    success, credentials = RenewSecret(token, credentials)
 
     # Write credentials to file
     print("Writing credentials to file")
     ExportCredentials(credentials, token)
+
+    # Wait for 15 seconds to make sure the new secret is active
+    print("Waiting for 30 seconds to make sure the new secret is active")
+    i= 0
+    while i <= 30:
+        print(".", end="", flush=True)
+        time.sleep(1)
+        i += 1
+        continue
+
+    print("\n")
+
+    # Create PDF file
+    print("Creating PDF file")
+    success = ExportVaultPDF(credentials, ".")
+
+    if not success:
+        print("Creating PDF file failed")
+        sys.exit(1)
+    
+    print("PDF file created successfully")
+    
+    print("Successfully renewed SP secret")
+    print("Please replace the new credentials file + pdf!")
+
+def GeneratePDF() -> None:
+    # Get path of the credentials file
+    print("Please provide the path of the credentials file")
+    while True:
+        path = input("Please enter the path: [Default: ./credentials.json] ")
+
+        if path == "":
+            path = "./credentials.json"
+
+        # Check if path exists
+        if not os.path.exists(path):
+            print("Path does not exist")
+            continue
+        
+        break
+
+    # make sure there is no / at end of string
+    if path[-1] == "/":
+        path = path[:-1]
+
+    # Get path for PDF file
+    print("Please provide the path of the PDF file")
+    while True:
+        path_pdf = input("Please enter the path: [Default: ./] ")
+
+        if path_pdf == "":
+            path_pdf = "./"
+
+        # Check if path exists
+        if not os.path.exists(path_pdf):
+            print("Path does not exist")
+            continue
+        
+        break
+
+    # make sure there is no / at end of string
+    if path_pdf[-1] == "/":
+        path_pdf = path_pdf[:-1]
+
+    # Read credentials from JSON file
+    print("Reading credentials from JSON file")
+    credentials = ReadCredentials(path)
+
+    if credentials.test():
+        print("Credentials are valid")
+    else:
+        print("Credentials are invalid. Check your credentials file")
+        sys.exit(1)
+    
+    # Create PDF file
+    print("Creating PDF file")
+    success = ExportVaultPDF(credentials, path_pdf)
+
+    if not success:
+        print("Creating PDF file failed")
+        sys.exit(1)
+    
+    print("PDF file created successfully")
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -595,14 +705,17 @@ def main():
     
     elif menuChoice == "4":
         RenewSPSecret()
-    
+
     elif menuChoice == "5":
+        GeneratePDF()
+    
+    elif menuChoice == "6":
         ProvideEmergencyAccess()
 
-    elif menuChoice == "6":
+    elif menuChoice == "7":
         DisableCA()
 
-    elif menuChoice == "7":
+    elif menuChoice == "8":
         RollbackEmergencyAccess()
 
 if __name__ == "__main__":
