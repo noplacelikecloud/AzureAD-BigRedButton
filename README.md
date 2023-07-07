@@ -107,5 +107,3 @@ You can modify and combine these command line parameters as per your requirement
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
-Feel free to modify the content and structure of the `README.md` file according to your project's specific needs.
