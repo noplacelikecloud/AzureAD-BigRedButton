@@ -3,6 +3,10 @@ import json
 from models import UserObj, ServicePrincipal
 import time
 import os
+import qrcode
+import jinja2
+import pdfkit
+import datetime
 
 import password_generator as pg
 
@@ -123,6 +127,9 @@ def CreateServicePrincipal(name:str, token:str) -> (bool, ServicePrincipal):
                 print("Secret created")
                 ServPrinc.secretId = response_secret.json()['keyId']
                 ServPrinc.clientSecret = response_secret.json()['secretText']
+                EndOfValidity = response_secret.json()['endDateTime']
+                EndOfValidity = datetime.datetime.strptime(EndOfValidity[:26], '%Y-%m-%dT%H:%M:%S.%f')
+                ServPrinc.secretValidUntil = EndOfValidity.strftime('%d.%m.%Y %H:%M:%S'+ " UTC")
             else:
                 print("Error creating secret")
                 print(response_secret.text)
@@ -206,6 +213,7 @@ def ExportCredentials(sp:ServicePrincipal, token: str, path:str = ".") -> bool:
         "clientId": sp.applicationId,
         "clientSecret": sp.clientSecret,
         "ServicePrincipal_ObjectId": sp.objectId,
+        "secretValidUntil": sp.secretValidUntil
     }
     try:
         with open(path + '/' + "credentials.json", "w") as outfile:
@@ -236,6 +244,7 @@ def ReadCredentials(path : str) -> ServicePrincipal:
     spObj.objectId = data['ServicePrincipal_ObjectId']
     spObj.SpObjectId = data['application_ObjectId']
     spObj.secretId = data['secretId']
+    spObj.secretValidUntil = data['secretValidUntil']
 
     return spObj
 
@@ -551,7 +560,7 @@ def DeleteEmergencyUser(token:str):
         input("Please confirm you deleted the user manually. If not, please do so now.")
         return True
 
-def RenewSecret(token:str, creds:ServicePrincipal) -> (bool, str, str):
+def RenewSecret(token:str, creds:ServicePrincipal) -> (bool, ServicePrincipal):
     # Delete old secret
     print("Delete old secret")
     url = f"https://graph.microsoft.com/v1.0/applications/{creds.SpObjectId}/removePassword"
@@ -569,38 +578,87 @@ def RenewSecret(token:str, creds:ServicePrincipal) -> (bool, str, str):
 
         if response.status_code == 200:
             print("Secret created")
-            secretId = response.json()['keyId']
-            secret = response.json()['secretText']
-            return True, secretId, secret
+            creds.secretId = response.json()['keyId']
+            creds.clientSecret = response.json()['secretText']
+            EndOfValidity = response.json()['endDateTime']
+            EndOfValidity = datetime.datetime.strptime(EndOfValidity[:26], '%Y-%m-%dT%H:%M:%S.%f')
+            creds.secretValidUntil = EndOfValidity.strftime('%d.%m.%Y %H:%M:%S'+ " UTC")
+            return True, creds
         elif response.status_code == 401:
             print("Unauthorized. Check if your account is a Global Admin")
-            return False,"",""
+            return False,None
         elif response.status_code == 403:
             print("Forbidden")
-            return False,"",""
+            return False,None
         elif response.status_code == 404:
             print("Not found")
-            return False,"",""
+            return False,None
         elif response.status_code == 500:
             print("Internal server error")
-            return False,"",""
+            return False,None
         else:
             print("Unknown error")
             print(response.text)
-            return False,"",""
+            return False,None
     elif response.status_code == 401:
         print("Unauthorized. Check if your account is a Global Admin")
-        return False,"",""
+        return False,None
     elif response.status_code == 403:
         print("Forbidden")
-        return False,"",""
+        return False,None
     elif response.status_code == 404:
         print("Not found")
-        return False,"",""
+        return False,None
     elif response.status_code == 500:
         print("Internal server error")
-        return False,"",""
+        return False,None
     else:
         print("Unknown error")
         print(response.text)
-        return False,"",""
+        return False,None
+
+def ExportVaultPDF(sp: ServicePrincipal, path: str) -> bool:
+    try:
+        # Generate QR Code with credentials file
+        print("Generate QR Code with credentials file")
+        qr = qrcode.QRCode()
+
+        # build json string
+        jsonstr = json.dumps(sp.__dict__)
+        qr.add_data(jsonstr)
+
+        # create qr code as png
+        img = qr.make_image(fill_color="black", back_color="white")
+        img.save("qr.png")
+
+        # Set variables for template
+        context = {}
+        context['domain'] = sp.getDomain()
+        context['tenantId'] = sp.tenantId
+        context['clientId'] = sp.applicationId
+        context['clientSecret'] = sp.clientSecret
+        context['QRCode'] = os.path.dirname(os.path.abspath(__file__)) + "/qr.png"
+        context['CSSFile'] = os.path.dirname(os.path.abspath(__file__)) + "/templates/style.css"
+        context['validUntil'] = sp.secretValidUntil
+
+        # Generate PDF with QR Code
+        print("Generate PDF with QR Code")
+        template_loader = jinja2.FileSystemLoader(searchpath="./")
+        template_env = jinja2.Environment(loader=template_loader)
+
+        template = template_env.get_template("templates/pdf_template.html")
+        outputText = template.render(context)
+
+        path = path + "BreakGlassInformation.pdf"
+
+        pdfkit.from_string(outputText, path, options={"enable-local-file-access": ""})
+
+        print("Vault PDF generated")
+
+        return True
+
+    except Exception as e:
+        print("Error generating PDF")
+        print(e)
+        return False
+    

@@ -1,1 +1,4 @@
 azure.identity
+qrcode
+pdfkit
+jinja2

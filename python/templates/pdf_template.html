@@ -1,0 +1,34 @@
+<head>
+    <link rel="stylesheet" type="text/css" href="{{CSSFile}}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <h1 style="text-align: center;"><strong>&nbsp;<span style="color: #ff0000;">Azure AD Tenant: {{domain}}</span></strong></h1>
+    <h1 style="text-align: center;"><strong><span style="color: #ff0000;">Emergency Glass Break</span></strong></h1>
+    <p>&nbsp;</p>
+    <h1 style="text-align: center;"><strong><span style="color: #ff0000;">Store this printed on a safe place!</span></strong></h1>
+    <p>&nbsp;</p>
+    <h3><span style="color: #000000;"><strong>Information:</strong></span></h3>
+    <p><span style="color: #000000;">This QR-Code have all needed information stored in JSON-Format to get emergency access to Azure AD.</span></p>
+    <h4><span style="color: #000000;">The credentials remains valid until: <b>{{validUntil}}</b></span></p>
+    <h3><span style="color: #000000;">Usage:</span></h3>
+    <p>1. Use the interactive python application published here: <a href="https://github.com/noplacelikecloud/AzureAD-BigRedButton">https://github.com/noplacelikecloud/AzureAD-BigRedButton</a></p>
+    <ul>
+    <li>Please use the credentials.json stored in the following QR Code:</li>
+    </ul>
+    <p>&nbsp;</p>
+    <p style="text-align: center;"><img src="{{QRCode}}" alt="" width="150" height="150"/></p>
+    <p style="text-align: left;">&nbsp;</p>
+    <p style="text-align: left;">2. If this is not possible, you can use the clear text credentials here:</p>
+    <h4 style="text-align: center;">TenantId: {{tenantId}}</h4>
+    <h4 style="text-align: center;">ClientId: {{clientId}}</h4>
+    <h4 style="text-align: center;">ClientSecret: {{clientSecret}}</h4>
+    <p>This service principal has full global admin permissions with the possibility of disabling conditional access, add/remove user, and so on..</p>
+    <h3>NEVER remove this document from this location, except you inform (or his/her representant):</h3>
+    <p>Name:&nbsp; &nbsp;______________________</p>
+    <p>Email:&nbsp; ______________________</p>
+    <p>Tel:&nbsp; &nbsp; &nbsp; _______________________</p>
+</body>
