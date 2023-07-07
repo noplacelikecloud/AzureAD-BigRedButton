@@ -1,6 +1,3 @@
-Certainly! Here's an updated version of the `README.md` file that includes information about using command line parameters for automatic tasks:
-
-```markdown
 # Glass Break Access - Code Project
 
 This code project provides a CLI application for managing glass break access to Azure AD in case of emergencies. It allows you to set up a new glass break access, provide emergency access, disable conditional access, and perform other administrative and recovery tasks.
