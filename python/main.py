@@ -103,10 +103,10 @@ def CreateNewGlassBreakAccess():
         print("Exporting credentials failed")
         sys.exit(1)
     
-    print("Waiting for secret to be available - 20 seconds")
+    print("Waiting for secret to be available - 30 seconds")
     #Sleep to make sure that secret is available
     i = 0
-    while i < 20:
+    while i < 30:
         print(".", end="", flush=True)
         time.sleep(1)
         i += 1
@@ -130,7 +130,7 @@ def CreateNewGlassBreakAccess():
     
     print("Glass break access successfully created!")
     print("Please store the credentials file + pdf on a safe place!")
-    print("Your credentials are vaild until " + ServPrinc.endDateTime)
+    print("Your credentials are vaild until " + ServPrinc.secretValidUntil)
     print("Please make sure to renew your credentials before they expire. For this, you can use the renew secret key function")
 
 def ProvideEmergencyAccess():
@@ -580,9 +580,9 @@ def RenewSPSecret(isAutomated: bool = False, autoPath:str = None) -> None:
     ExportCredentials(credentials, token)
 
     # Wait for 15 seconds to make sure the new secret is active
-    print("Waiting for 20 seconds to make sure the new secret is active")
+    print("Waiting for 30 seconds to make sure the new secret is active")
     i= 0
-    while i <= 20:
+    while i <= 30:
         print(".", end="", flush=True)
         time.sleep(1)
         i += 1

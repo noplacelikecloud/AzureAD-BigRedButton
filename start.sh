@@ -21,6 +21,5 @@ fi
 
 # Run the Python script
 echo "Running main.py..."
-python3 python/main.py
-
-read -p "Press Enter to exit..."
+cd python
+python3 main.py
